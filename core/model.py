@@ -119,8 +119,8 @@ class LGM(nn.Module):
         pos = self.pos_act(x[..., 0:3])     # [B, N, 3]
         opacity = self.opacity_act(x[..., 3:4]) # [B, N, 1]
         scale = self.scale_act(x[..., 4:7]) # [B, N, 3]
-        rotation = self.rot_act(x[..., 7:11])   # [B, N, 3]
-        rgbs = self.rgb_act(x[..., 11:])    # [B, N, 4]
+        rotation = self.rot_act(x[..., 7:11])   # [B, N, 4]
+        rgbs = self.rgb_act(x[..., 11:])    # [B, N, 3]
 
         gaussians = torch.cat([pos, opacity, scale, rotation, rgbs], dim=-1)    # [B, N, 14]
         return gaussians
