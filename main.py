@@ -14,8 +14,6 @@ import torch
 import tyro
 import kiui
 import wandb
-from kaggle_secrets import UserSecretsClient
-
 
 
 def main():    
