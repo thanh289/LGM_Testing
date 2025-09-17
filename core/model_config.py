@@ -161,6 +161,29 @@ config_defaults['4441'] = Options(
     mixed_precision='fp16',
 )
 
+config_doc['test'] = 'settings for testing'
+config_defaults['test'] = Options(
+
+    input_size=128, 
+    
+    # 128 -> 64 -> 32 -> 16 -> 8 -> 4 -> 4
+    down_channels=(64, 128, 256, 512, 1024),
+    down_attention=(False, False, True, True, True),
+    mid_attention=True,
+    # 4 -> 8 -> 16 -> 32 -> 32
+    up_channels=(1024, 512, 256, 128, 4),
+    up_attention=(True, True, True, False, False),
+    
+    splat_size=32,
+    output_size=512,
+    batch_size=1, 
+    gradient_accumulation_steps=1,
+    num_workers = 4,
+    lr=1e-4,
+    num_epochs=63,
+    mixed_precision='fp16',
+)
+
 AllConfigs = tyro.extras.subcommand_type_from_defaults(config_defaults, config_doc)
 
 
