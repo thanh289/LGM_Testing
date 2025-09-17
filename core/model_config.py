@@ -166,11 +166,11 @@ config_defaults['test'] = Options(
 
     input_size=128, 
     
-    # 128 -> 64 -> 32 -> 16 -> 8 -> 4 -> 4
+    # 128 -> 64 -> 32 -> 16 -> 8 -> 8 
     down_channels=(64, 128, 256, 512, 1024),
     down_attention=(False, False, True, True, True),
     mid_attention=True,
-    # 4 -> 8 -> 16 -> 32 -> 32
+    # 8 -> 16 -> 32 -> 4 -> 64
     up_channels=(1024, 512, 256, 128, 4),
     up_attention=(True, True, True, False, False),
     

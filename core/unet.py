@@ -282,7 +282,8 @@ class UNet(nn.Module):
         for i in range(len(up_channels)):
             cin = cout
             cout = up_channels[i]
-            cskip = down_channels[max(-2 - i, -len(down_channels))] # for assymetric
+            # cskip = down_channels[max(-2 - i, -len(down_channels))] # for assymetric
+            cskip = down_channels[len(down_channels) - 1 - i] # for symetric
 
             up_blocks.append(UpBlock(
                 cin, cskip, cout, 
