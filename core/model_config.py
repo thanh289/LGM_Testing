@@ -170,11 +170,11 @@ config_defaults['test'] = Options(
     down_channels=(64, 128, 256, 512, 1024),
     down_attention=(False, False, False, True, True),
     mid_attention=True,
-    # 8 -> 16 -> 32 -> 64 -> 128 -> 128
-    up_channels=(1024, 512, 256, 128, 64),
+    # 8 -> 16 -> 32 -> 64 -> 64
+    up_channels=(1024, 512, 256, 128),
     up_attention=(True, True, True, False, False),
     
-    splat_size=128,
+    splat_size=64,
     output_size=512,
     batch_size=1, 
     gradient_accumulation_steps=1,
