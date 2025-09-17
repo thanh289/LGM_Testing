@@ -17,7 +17,7 @@ import wandb
 
 
 def main():    
-    cfg = tyro.cli(AllConfigs, args=['4441'])
+    cfg = tyro.cli(AllConfigs)
 
     wandb.login(key=cfg.wandb_key)
     
