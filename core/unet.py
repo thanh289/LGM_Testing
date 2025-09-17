@@ -381,23 +381,23 @@ class UNet(nn.Module):
         # first
         x = self.conv_in(x)
 
-        # down
-        saved_skips = []
+        # Down-sampling path
+        skips = [x]
         for block in self.down_blocks:
-            saved_skips.append(x)
             x = block(x)
+            skips.append(x)
 
-        # mid
+        # Mid-path
         x = self.mid_block(x)
 
-        # up
-        for block in self.up_blocks:
-            skip_x = saved_skips.pop()
-            x = block(x, skip_x)
+        # Up-sampling path
+        for i, block in enumerate(self.up_blocks):
+            skip_connection = skips[len(skips) - 3 - i]
+            x = block(x, skip_connection)
 
         # last
         x = self.norm_out(x)
         x = F.silu(x)
-        x = self.conv_out(x) # [B, Cout, H', W']
+        x = self.conv_out(x)
 
         return x
