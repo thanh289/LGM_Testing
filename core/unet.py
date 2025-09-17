@@ -203,6 +203,11 @@ class UpBlock(nn.Module):
     ):
         super().__init__()
 
+        self.upsample = None
+        if upsample:
+            # Upsample ngay từ đầu để khớp kích thước không gian
+            self.upsample = nn.Upsample(scale_factor=2.0, mode='nearest')
+            
         nets = []
         attns = []
         for i in range(num_layers):
@@ -217,26 +222,37 @@ class UpBlock(nn.Module):
         self.nets = nn.ModuleList(nets)
         self.attns = nn.ModuleList(attns)
 
-        self.upsample = None
-        if upsample:
-            self.upsample = nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=1, padding=1)
+        # self.upsample = None
+        # if upsample:
+        #     self.upsample = nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=1, padding=1)
 
     def forward(self, x, xs):
 
+        # for attn, net in zip(self.attns, self.nets):
+        #     res_x = xs[-1]
+        #     xs = xs[:-1]
+        #     x = torch.cat([x, res_x], dim=1)
+        #     x = net(x)
+        #     if attn:
+        #         x = attn(x)
+            
+        # if self.upsample:
+        #     x = F.interpolate(x, scale_factor=2.0, mode='nearest')
+        #     x = self.upsample(x)
+        
+        # return x
+
+        if self.upsample:
+            x = self.upsample(x)
+        
+        x = torch.cat([x, skip_x], dim=1)
+
         for attn, net in zip(self.attns, self.nets):
-            res_x = xs[-1]
-            xs = xs[:-1]
-            x = torch.cat([x, res_x], dim=1)
             x = net(x)
             if attn:
                 x = attn(x)
             
-        if self.upsample:
-            x = F.interpolate(x, scale_factor=2.0, mode='nearest')
-            x = self.upsample(x)
-        
         return x
-
 
 # it could be asymmetric!
 class UNet(nn.Module):
@@ -277,22 +293,43 @@ class UNet(nn.Module):
         self.mid_block = MidBlock(down_channels[-1], attention=mid_attention, skip_scale=skip_scale)
 
         # up
+        # up_blocks = []
+        # cout = up_channels[0]
+        # for i in range(len(up_channels)):
+        #     cin = cout
+        #     cout = up_channels[i]
+        #     # cskip = down_channels[max(-2 - i, -len(down_channels))] # for assymetric
+        #     cskip = down_channels[len(down_channels) - 1 - i] # for symetric
+
+        #     up_blocks.append(UpBlock(
+        #         cin, cskip, cout, 
+        #         num_layers=layers_per_block + 1, # one more layer for up
+        #         upsample=(i != len(up_channels) - 1), # not final layer
+        #         attention=up_attention[i],
+        #         skip_scale=skip_scale,
+        #     ))
+        # self.up_blocks = nn.ModuleList(up_blocks)
         up_blocks = []
-        cout = up_channels[0]
+        cin = down_channels[-1]
         for i in range(len(up_channels)):
-            cin = cout
+            skip_c = down_channels[len(down_channels) - 1 - i]
             cout = up_channels[i]
-            # cskip = down_channels[max(-2 - i, -len(down_channels))] # for assymetric
-            cskip = down_channels[len(down_channels) - 1 - i] # for symetric
 
             up_blocks.append(UpBlock(
-                cin, cskip, cout, 
-                num_layers=layers_per_block + 1, # one more layer for up
-                upsample=(i != len(up_channels) - 1), # not final layer
+                cin, skip_c, cout, 
+                num_layers=layers_per_block, 
+                upsample=True,
                 attention=up_attention[i],
                 skip_scale=skip_scale,
             ))
+            
+            cin = cout
+
         self.up_blocks = nn.ModuleList(up_blocks)
+        if len(self.up_blocks) > 0:
+            self.up_blocks[-1].upsample = None
+
+
 
         # last
         self.norm_out = nn.GroupNorm(num_channels=up_channels[-1], num_groups=32, eps=1e-5)
@@ -315,11 +352,14 @@ class UNet(nn.Module):
         x = self.mid_block(x)
 
         # up
-        for block in (self.up_blocks):
-            xs = xss[-len(block.nets):]
-            xss = xss[:-len(block.nets)]
-            x = block(x, xs)
-            
+        # for block in (self.up_blocks):
+        #     xs = xss[-len(block.nets):]
+        #     xss = xss[:-len(block.nets)]
+        #     x = block(x, xs)
+        for i, block in enumerate(self.up_blocks):
+            skip_x = xss[len(self.down_blocks) - 1 - i]
+            x = block(x, skip_x)
+                    
 
         # last
         x = self.norm_out(x)
