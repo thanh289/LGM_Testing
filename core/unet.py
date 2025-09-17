@@ -9,6 +9,7 @@ from typing import Tuple, Literal
 from core.attention import MemEffAttention
 
 
+# Multi-view Attention: Attention across multi view
 class MVAttention(nn.Module):
     def __init__(
         self,
@@ -22,7 +23,7 @@ class MVAttention(nn.Module):
         eps: float = 1e-5,
         residual: bool = True,
         skip_scale: float = 1,
-        num_frames: int = 13,
+        num_frames: int = 13, # WARN: hardcoded!
     ):
         super().__init__()
 
@@ -34,14 +35,17 @@ class MVAttention(nn.Module):
         self.attn = MemEffAttention(dim, num_heads, qkv_bias, proj_bias, attn_drop, proj_drop)
 
     def forward(self, x):
-        BV, C, H, W = x.shape
+        BV, C, H, W = x.shape # BV = Batch * View
         B = BV // self.num_frames
 
         res = x
         x = self.norm(x)
 
+        # (BV, C, H, W) -> reshape: (B, V, C, H, W) -> permute: (B, V, H, W, C) -> reshape: (B, V * H * W, C)
         x = x.reshape(B, self.num_frames, C, H, W).permute(0, 1, 3, 4, 2).reshape(B, -1, C)
+        # (B, V * H * W, C)
         x = self.attn(x)
+        # (B, V * H * W, C) -> reshape: (B, V, H, W, C) -> permute: (B, V, C, H, W) -> reshape: (BV, C, H, W)
         x = x.reshape(B, self.num_frames, H, W, C).permute(0, 1, 4, 2, 3).contiguous().reshape(BV, C, H, W)
 
         if self.residual:
@@ -57,7 +61,7 @@ class ResnetBlock(nn.Module):
         resample: Literal['default', 'up', 'down'] = 'default',
         groups: int = 32,
         eps: float = 1e-5,
-        skip_scale: float = 1,
+        skip_scale: float = 1, # multiplied to output, preventing from exploding activations
     ):
         super().__init__()
 
@@ -65,6 +69,7 @@ class ResnetBlock(nn.Module):
         self.out_channels = out_channels
         self.skip_scale = skip_scale
 
+        # There are a lot of ways for normalization, here GroupNorm is usually used for U-net
         self.norm1 = nn.GroupNorm(num_groups=groups, num_channels=in_channels, eps=eps, affine=True)
         self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=1, padding=1)
 
@@ -73,11 +78,12 @@ class ResnetBlock(nn.Module):
 
         self.act = F.silu
 
+        # This one is set to default in this file, no up or down
         self.resample = None
         if resample == 'up':
             self.resample = partial(F.interpolate, scale_factor=2.0, mode="nearest")
         elif resample == 'down':
-            self.resample = nn.AvgPool2d(kernel_size=2, stride=2)
+            self.resample = nn.AvgPool2d(kernel_size=2, stride=2) # average for the kernel
         
         self.shortcut = nn.Identity()
         if self.in_channels != self.out_channels:
@@ -109,7 +115,7 @@ class DownBlock(nn.Module):
         self,
         in_channels: int,
         out_channels: int,
-        num_layers: int = 1,
+        num_layers: int = 1, # each layer have 1 ResnetBlack and 1 MVAttention optional
         downsample: bool = True,
         attention: bool = True,
         attention_heads: int = 16,
@@ -126,23 +132,28 @@ class DownBlock(nn.Module):
                 attns.append(MVAttention(out_channels, attention_heads, skip_scale=skip_scale))
             else:
                 attns.append(None)
-        self.nets = nn.ModuleList(nets)
-        self.attns = nn.ModuleList(attns)
+        self.nets = nn.ModuleList(nets) # for training
+        self.attns = nn.ModuleList(attns) 
 
+        # Different with the 'down' in the ResnetBlock is that this one can be leanred
         self.downsample = None
         if downsample:
             self.downsample = nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=2, padding=1)
 
     def forward(self, x):
+        xs = []
+
         for attn, net in zip(self.attns, self.nets):
             x = net(x)
             if attn:
                 x = attn(x)
+            xs.append(x)
 
         if self.downsample:
             x = self.downsample(x)
+            xs.append(x)
   
-        return x
+        return x, xs
 
 
 class MidBlock(nn.Module):
@@ -158,7 +169,9 @@ class MidBlock(nn.Module):
 
         nets = []
         attns = []
+        # first layer
         nets.append(ResnetBlock(in_channels, in_channels, skip_scale=skip_scale))
+        # more layers
         for i in range(num_layers):
             nets.append(ResnetBlock(in_channels, in_channels, skip_scale=skip_scale))
             if attention:
@@ -175,12 +188,12 @@ class MidBlock(nn.Module):
                 x = attn(x)
             x = net(x)
         return x
-
+    
 class UpBlock(nn.Module):
     def __init__(
         self,
         in_channels: int,
-        skip_channels: int,
+        prev_out_channels: int,
         out_channels: int,
         num_layers: int = 1,
         upsample: bool = True,
@@ -190,46 +203,47 @@ class UpBlock(nn.Module):
     ):
         super().__init__()
 
-        self.upsample = None
-        if upsample:
-            self.upsample = nn.Upsample(scale_factor=2.0, mode='nearest')
-
         nets = []
         attns = []
-        
-        layer_in_channels = in_channels + skip_channels
-        
         for i in range(num_layers):
-            cin = layer_in_channels if i == 0 else out_channels
-            
-            nets.append(ResnetBlock(cin, out_channels, skip_scale=skip_scale))
+            cin = in_channels if i == 0 else out_channels
+            cskip = prev_out_channels if (i == num_layers - 1) else out_channels
+
+            nets.append(ResnetBlock(cin + cskip, out_channels, skip_scale=skip_scale))
             if attention:
                 attns.append(MVAttention(out_channels, attention_heads, skip_scale=skip_scale))
             else:
                 attns.append(None)
-        
         self.nets = nn.ModuleList(nets)
         self.attns = nn.ModuleList(attns)
 
-    def forward(self, x, skip_x):
-        if self.upsample:
-            x = self.upsample(x)
-        
-        x = torch.cat([x, skip_x], dim=1)
+        self.upsample = None
+        if upsample:
+            self.upsample = nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=1, padding=1)
+
+    def forward(self, x, xs):
 
         for attn, net in zip(self.attns, self.nets):
+            res_x = xs[-1]
+            xs = xs[:-1]
+            x = torch.cat([x, res_x], dim=1)
             x = net(x)
             if attn:
                 x = attn(x)
             
+        if self.upsample:
+            x = F.interpolate(x, scale_factor=2.0, mode='nearest')
+            x = self.upsample(x)
+        
         return x
 
 
+# it could be asymmetric!
 class UNet(nn.Module):
     def __init__(
         self,
         in_channels: int = 9,
-        out_channels: int = 14,
+        out_channels: int = 14  ,
         down_channels: Tuple[int, ...] = (64, 128, 256, 512, 1024, 1024),
         down_attention: Tuple[bool, ...] = (False, False, False, True, True, True),
         mid_attention: bool = True,
@@ -240,59 +254,75 @@ class UNet(nn.Module):
     ):
         super().__init__()
 
+        # first
         self.conv_in = nn.Conv2d(in_channels, down_channels[0], kernel_size=3, stride=1, padding=1)
 
+        # down
         down_blocks = []
         cout = down_channels[0]
         for i in range(len(down_channels)):
             cin = cout
             cout = down_channels[i]
+
             down_blocks.append(DownBlock(
                 cin, cout, 
                 num_layers=layers_per_block, 
-                downsample=(i != len(down_channels) - 1),
+                downsample=(i != len(down_channels) - 1), # not final layer
                 attention=down_attention[i],
                 skip_scale=skip_scale,
             ))
         self.down_blocks = nn.ModuleList(down_blocks)
 
+        # mid
         self.mid_block = MidBlock(down_channels[-1], attention=mid_attention, skip_scale=skip_scale)
 
+        # up
         up_blocks = []
-        cin = down_channels[-1]
+        cout = up_channels[0]
         for i in range(len(up_channels)):
-            skip_c = down_channels[max(0, len(down_channels) - 2 - i)]
+            cin = cout
             cout = up_channels[i]
+            cskip = down_channels[max(-2 - i, -len(down_channels))] # for assymetric
+
             up_blocks.append(UpBlock(
-                cin, skip_c, cout, 
-                num_layers=layers_per_block,
-                upsample=(i != len(up_channels) - 1),
+                cin, cskip, cout, 
+                num_layers=layers_per_block + 1, # one more layer for up
+                upsample=(i != len(up_channels) - 1), # not final layer
                 attention=up_attention[i],
                 skip_scale=skip_scale,
             ))
-            cin = cout
         self.up_blocks = nn.ModuleList(up_blocks)
 
+        # last
         self.norm_out = nn.GroupNorm(num_channels=up_channels[-1], num_groups=32, eps=1e-5)
         self.conv_out = nn.Conv2d(up_channels[-1], out_channels, kernel_size=3, stride=1, padding=1)
 
 
     def forward(self, x):
+        # x: [B, Cin, H, W]
+
+        # first
         x = self.conv_in(x)
 
-        skips = [x]
-        for block in self.down_blocks:
-            x = block(x)
-            skips.append(x)
+        # down
+        xss = [x]
+        for block in (self.down_blocks):
+            x, xs = block(x)
+            xss.extend(xs)
         
+        # mid
         x = self.mid_block(x)
 
-        for i, block in enumerate(self.up_blocks):
-            skip_connection = skips[len(self.down_blocks) - 1 - i]
-            x = block(x, skip_connection)
+        # up
+        for block in (self.up_blocks):
+            xs = xss[-len(block.nets):]
+            xss = xss[:-len(block.nets)]
+            x = block(x, xs)
             
+
+        # last
         x = self.norm_out(x)
         x = F.silu(x)
-        x = self.conv_out(x)
+        x = self.conv_out(x) # [B, Cout, H', W']
 
         return x
