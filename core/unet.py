@@ -226,22 +226,23 @@ class UpBlock(nn.Module):
         # if upsample:
         #     self.upsample = nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=1, padding=1)
 
-    def forward(self, x, xs):
+    # def forward(self, x, xs):
 
-        # for attn, net in zip(self.attns, self.nets):
-        #     res_x = xs[-1]
-        #     xs = xs[:-1]
-        #     x = torch.cat([x, res_x], dim=1)
-        #     x = net(x)
-        #     if attn:
-        #         x = attn(x)
+    #     for attn, net in zip(self.attns, self.nets):
+    #         res_x = xs[-1]
+    #         xs = xs[:-1]
+    #         x = torch.cat([x, res_x], dim=1)
+    #         x = net(x)
+    #         if attn:
+    #             x = attn(x)
             
-        # if self.upsample:
-        #     x = F.interpolate(x, scale_factor=2.0, mode='nearest')
-        #     x = self.upsample(x)
+    #     if self.upsample:
+    #         x = F.interpolate(x, scale_factor=2.0, mode='nearest')
+    #         x = self.upsample(x)
         
-        # return x
-
+    #     return x
+    
+    def forward(self, x, skip_x):
         if self.upsample:
             x = self.upsample(x)
         
