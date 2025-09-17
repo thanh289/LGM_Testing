@@ -171,7 +171,7 @@ config_defaults['test'] = Options(
     down_attention=(False, False, True, True, True),
     mid_attention=True,
     # 8 -> 16 -> 32 -> 4 -> 64
-    up_channels=(1024, 512, 256, 128, 4),
+    up_channels=(1024, 512, 256, 128, 64),
     up_attention=(True, True, True, False, False),
     
     splat_size=32,
