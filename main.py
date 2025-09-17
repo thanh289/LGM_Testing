@@ -14,13 +14,15 @@ import torch
 import tyro
 import kiui
 import wandb
+from kaggle_secrets import UserSecretsClient
 
 
 
 def main():    
-
     cfg = tyro.cli(AllConfigs, args=['4441'])
 
+    wandb.login(key=cfg.wandb_key)
+    
     run = wandb.init(
         project=cfg.wandb_project_name,  # Specify your project
         name=cfg.wandb_experiment_name,
