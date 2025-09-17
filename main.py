@@ -19,15 +19,7 @@ from kaggle_secrets import UserSecretsClient
 
 
 def main():    
-    try:
-        user_secrets = UserSecretsClient()
-        wandb_key = user_secrets.get_secret("WANDB_API_KEY")
-        wandb.login(key=wandb_key)
-    except Exception as e:
-        print("Wandb error:", e)
-        import os
-        os.environ["WANDB_MODE"] = "offline"
-        
+
     cfg = tyro.cli(AllConfigs, args=['4441'])
 
     run = wandb.init(
