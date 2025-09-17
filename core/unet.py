@@ -140,20 +140,30 @@ class DownBlock(nn.Module):
         if downsample:
             self.downsample = nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=2, padding=1)
 
-    def forward(self, x):
-        xs = []
+    # def forward(self, x):
+    #     xs = []
 
+    #     for attn, net in zip(self.attns, self.nets):
+    #         x = net(x)
+    #         if attn:
+    #             x = attn(x)
+    #         xs.append(x)
+
+    #     if self.downsample:
+    #         x = self.downsample(x)
+    #         xs.append(x)
+  
+    #     return x, xs
+    def forward(self, x):
         for attn, net in zip(self.attns, self.nets):
             x = net(x)
             if attn:
                 x = attn(x)
-            xs.append(x)
 
         if self.downsample:
             x = self.downsample(x)
-            xs.append(x)
-  
-        return x, xs
+
+        return x
 
 
 class MidBlock(nn.Module):
@@ -337,6 +347,34 @@ class UNet(nn.Module):
         self.conv_out = nn.Conv2d(up_channels[-1], out_channels, kernel_size=3, stride=1, padding=1)
 
 
+    # def forward(self, x):
+    #     # x: [B, Cin, H, W]
+
+    #     # first
+    #     x = self.conv_in(x)
+
+    #     # down
+    #     xss = [x]
+    #     for block in (self.down_blocks):
+    #         x, xs = block(x)
+    #         xss.extend(xs)
+        
+    #     # mid
+    #     x = self.mid_block(x)
+
+    #     # up
+    #     for block in (self.up_blocks):
+    #         xs = xss[-len(block.nets):]
+    #         xss = xss[:-len(block.nets)]
+    #         x = block(x, xs)
+                    
+
+    #     # last
+    #     x = self.norm_out(x)
+    #     x = F.silu(x)
+    #     x = self.conv_out(x) # [B, Cout, H', W']
+
+    #     return x
     def forward(self, x):
         # x: [B, Cin, H, W]
 
@@ -344,23 +382,18 @@ class UNet(nn.Module):
         x = self.conv_in(x)
 
         # down
-        xss = [x]
-        for block in (self.down_blocks):
-            x, xs = block(x)
-            xss.extend(xs)
-        
+        saved_skips = []
+        for block in self.down_blocks:
+            saved_skips.append(x)
+            x = block(x)
+
         # mid
         x = self.mid_block(x)
 
         # up
-        # for block in (self.up_blocks):
-        #     xs = xss[-len(block.nets):]
-        #     xss = xss[:-len(block.nets)]
-        #     x = block(x, xs)
-        for i, block in enumerate(self.up_blocks):
-            skip_x = xss[len(self.down_blocks) - 1 - i]
+        for block in self.up_blocks:
+            skip_x = saved_skips.pop()
             x = block(x, skip_x)
-                    
 
         # last
         x = self.norm_out(x)
