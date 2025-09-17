@@ -149,12 +149,12 @@ config_defaults['4441'] = Options(
     input_size=128, 
     
     # 128 -> 64 -> 32 -> 16 -> 8 -> 4 -> 4
-    down_channels=(32, 64, 128, 256, 512),
-    down_attention=(False, False, False, False, True),
+    down_channels=(64, 128, 256, 512, 1024, 1024),
+    down_attention=(False, False, False, True, True, True),
     mid_attention=True,
     # 4 -> 8 -> 16 -> 32 -> 32
-    up_channels=(512, 2566, 128, 64, 32),
-    up_attention=(True, False, False, False, False),
+    up_channels=(1024, 1024, 512, 256),
+    up_attention=(True, True, True, False),
     
     splat_size=32,
     output_size=512,
