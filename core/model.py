@@ -96,16 +96,16 @@ class LGM(nn.Module):
         return rays_embeddings
     
     def forward_gaussians(self, images):
-        # images: [B, 5, 9, H, W]
+        # images: [B, 13, 9, H, W]
         # return: Gaussians: [B, num_gauss * 14]
 
         B, V, C, H, W = images.shape
         images = images.view(B*V, C, H, W)
 
-        x = self.unet(images)   # [B*5, 14, H, W]
-        x = self.conv(x)        # [B*5, 14, H, W]
+        x = self.unet(images)   # [B*13, 14, H, W]
+        x = self.conv(x)        # [B*13, 14, H, W]
 
-        x = x.reshape(B, 5, 14, self.cfg.splat_size, self.cfg.splat_size)
+        x = x.reshape(B, V, 14, self.cfg.splat_size, self.cfg.splat_size)
         
         # # visualize multi-view gaussian features for plotting figure
         # tmp_alpha = self.opacity_act(x[0, :, 3:4])
@@ -114,7 +114,7 @@ class LGM(nn.Module):
         # kiui.vis.plot_image(tmp_img_rgb, save=True)
         # kiui.vis.plot_image(tmp_img_pos, save=True)
 
-        x = x.permute(0, 1, 3, 4, 2).reshape(B, -1, 14)    # [B, 5, splat_size, splat_size, 14] --> [B, N, 14]
+        x = x.permute(0, 1, 3, 4, 2).reshape(B, -1, 14)    # [B, 13, splat_size, splat_size, 14] --> [B, N, 14]
         
         pos = self.pos_act(x[..., 0:3])     # [B, N, 3]
         opacity = self.opacity_act(x[..., 3:4]) # [B, N, 1]
