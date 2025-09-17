@@ -18,14 +18,12 @@ class Options:
     # gaussian render size
     output_size: int = 256
 
-    vae_model: str = 'stabilityai/stable-diffusion-2-1-base'
-
     ### DATASET
     train_size: float = 0.8
     test_size: float = 0.1
     val_size: float = 0.1
     data_path: str = '/kaggle/input/objaverse-subset'
-    # data mode (only support s3 now) 
+    # data mode (only support s3 now)
     data_mode: Literal['s3'] = 's3'
     # Field of view in y direction of the dataset   
     fovy: float = 49.1
@@ -35,48 +33,45 @@ class Options:
     zfar: float = 2.5
     # number of total views
     num_views_total: int = 25
-    # number of (input + test) views 
-    # num_views_used: int = 17
+    # number of (input + test) views
     num_views_input: int = 13
     num_views_output: int = 13
-    # camera radius (radius of camera orbitting around object)  
+    # camera radius (radius of camera orbitting around object)
     cam_radius: float = 1.5 # to better use [-1, 1]^3 space
     # num workers
-    num_workers: int = 4
+    num_workers: int = 8
 
     ### TRAINING
     # workspace
     workspace: str = './workspace'
     # wandb
-    wandb_key: str = 'd62c4d017c3c5c14173bc682fdaf504e1a8f2f3e'
-    wandb_project_name: str ='LGM-4441-pretrain-ver9'
-    wandb_experiment_name: str = 'lr=4e-4. lamdamse=1, lamdalpip=1, worker=4, accu=1, no*4gaussianmodel, no vae, newunet'
-    wandb_experiment_id: str = None
+    wandb_key: Optional[str] = None
+    wandb_project_name: str = None
+    wandb_experiment_name: str = None
+    wandb_experiment_id: Optional[str] = None
     # fine-tuning
     fine_tune: bool = True
     # resume
-    resume: Optional[str] = '/kaggle/input/original-checkpoint/model_fp16_fixrot.safetensors'
+    resume: Optional[str] = None
     # batch size (per-GPU)
     batch_size: int = 8
     # gradient accumulation
     gradient_accumulation_steps: int = 1
     # training epochs
     num_epochs: int = 30
-    # for mse loss
     lambda_alpha: float = 1.0
     lambda_top: float = 1.0     # lambda top_view loss 
     lambda_mse_start: float = 1.0
     lambda_mse_end: float = 1.0
     # lpips loss weight (loss = L_mse + lambda * L_lpips)
-    lambda_lpips_start: float = 1
-    lambda_lpips_end: float = 1
+    lambda_lpips_start: float = 1.0
+    lambda_lpips_end: float = 1.0
     # gradient clip
     gradient_clip: float = 1.0
     # mixed precision
-    # mixed_precision: str = 'bf16'
-    mixed_precision: str = 'fp16'
+    mixed_precision: str = 'bf16'
     # learning rate
-    lr: float = 4e-4                                     
+    lr: float = 4e-4
     # augmentation prob for grid distortion
     prob_grid_distortion: float = 0.5
     # augmentation prob for camera jitter
