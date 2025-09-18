@@ -11,6 +11,7 @@ from kiui.op import safe_normalize
 
 def get_rays(pose, h, w, fovy, opengl=True):
     # pose (4, 4): camera-to-world matrix coordinate
+    # with pose[:3, :3] determine the direction of camera, pose[:3, 3]  determine the position of camera.
     # h, w: image height and width
     # fovy: vertical field of view in degrees
     # opengl: whether to use OpenGL convention (Y axis flipped)
@@ -31,6 +32,10 @@ def get_rays(pose, h, w, fovy, opengl=True):
     camera_dirs = F.pad(
         torch.stack(
             [
+                # currently x is range from 0 to w
+                # we move the coordinate system from top-left to the center
+                # but the coodinate of each pixel is in the top-left of them, we +0.5 to make sure the coordinate is in the center of each pixel
+                # and /focal, all you need to know it that it's used to standardize to the virtual image, which have the distance of 1 to the center of camera
                 (x - cx + 0.5) / focal,
                 (y - cy + 0.5) / focal * (-1.0 if opengl else 1.0),
             ],
@@ -56,10 +61,12 @@ def orbit_camera_jitter(poses, strength=0.1):
     # random orbital rotate
 
     B = poses.shape[0]
+    # rotate x around y, and y around x, and the max rotate of y is only half of x
     rotvec_x = poses[:, :3, 1] * strength * np.pi * (torch.rand(B, 1, device=poses.device) * 2 - 1)
     rotvec_y = poses[:, :3, 0] * strength * np.pi / 2 * (torch.rand(B, 1, device=poses.device) * 2 - 1)
 
     rot = roma.rotvec_to_rotmat(rotvec_x) @ roma.rotvec_to_rotmat(rotvec_y)
+    # when direction change, position must change at the same time
     R = rot @ poses[:, :3, :3]
     T = rot @ poses[:, :3, 3:]
 
@@ -119,19 +126,3 @@ def grid_distortion(images, strength=0.5):
     return images
 
 
-if __name__ == "__main__":
-    # Sample single pose
-    pose = torch.tensor([
-        [1.0, 0.0, 0.0, 0.0],   # Right
-        [0.0, 1.0, 0.0, 0.0],   # Up
-        [0.0, 0.0, 1.0, 5.0],   # Forward (camera is 5 units away on Z)
-        [0.0, 0.0, 0.0, 1.0],
-    ])  # shape: [4, 4]
-
-    poses = pose.unsqueeze(0)  # shape: [1, 4, 4]
-
-    # Jitter it
-    new_poses = orbit_camera_jitter(poses, strength=0.1)
-
-    print("original:", poses)
-    print("jittered:", new_poses)

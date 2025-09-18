@@ -41,19 +41,19 @@ class ObjaverseDataset(Dataset):
         
         self.items = []
         self.unused_items = [
-            '/kaggle/input/10k-objaverse-object/archive_60/d7380c30ab55424e9f770c9115c56a83',
-            '/kaggle/input/10k-objaverse-object/archive_17/279673bdc0c549df99a51f8469bae811',
-            '/kaggle/input/10k-objaverse-object/archive_62/ff70344b758b44ddb3c4e31b7eab91be',
-            '/kaggle/input/10k-objaverse-object/archive_27/b6d50c45ddca470b938a48cf80612470',
-            '/kaggle/input/10k-objaverse-object/archive_65/b7b851ecb844419ca4c0b780a62b27ae',
-            '/kaggle/input/10k-objaverse-object/archive_53/caa7053c0ee64ce8ac7ed1c8276af0de',
-            '/kaggle/input/10k-objaverse-object/archive_55/f57e883babaa4369aa0ecf09bbea04b0',
-            '/kaggle/input/10k-objaverse-object/archive_100/f5836f1fadd54919be5ce641182fd386',
-            '/kaggle/input/10k-objaverse-object/archive_96/2d2c2f9f1c54400187eea823843f8e2e',
-            '/kaggle/input/10k-objaverse-object/archive_57/65791b708f5d45dab22fb6be46255854',
-            '/kaggle/input/10k-objaverse-object/archive_57/d4f7e28fabb448049530a86c8dae568b',
-            '/kaggle/input/10k-objaverse-object/archive_5/793f1bd80bfb45268832b267d6a31cab',
-            '/kaggle/input/10k-objaverse-object/archive_5/b637b4e3f43d414c96edb6a0c18b0603'
+            '/kaggle/input/objaverse-subset/archive_60/d7380c30ab55424e9f770c9115c56a83',
+            '/kaggle/input/objaverse-subset/archive_17/279673bdc0c549df99a51f8469bae811',
+            '/kaggle/input/objaverse-subset/archive_62/ff70344b758b44ddb3c4e31b7eab91be',
+            '/kaggle/input/objaverse-subset/archive_27/b6d50c45ddca470b938a48cf80612470',
+            '/kaggle/input/objaverse-subset/archive_65/b7b851ecb844419ca4c0b780a62b27ae',
+            '/kaggle/input/objaverse-subset/archive_53/caa7053c0ee64ce8ac7ed1c8276af0de',
+            '/kaggle/input/objaverse-subset/archive_55/f57e883babaa4369aa0ecf09bbea04b0',
+            '/kaggle/input/objaverse-subset/archive_100/f5836f1fadd54919be5ce641182fd386',
+            '/kaggle/input/objaverse-subset/archive_96/2d2c2f9f1c54400187eea823843f8e2e',
+            '/kaggle/input/objaverse-subset/archive_57/65791b708f5d45dab22fb6be46255854',
+            '/kaggle/input/objaverse-subset/archive_57/d4f7e28fabb448049530a86c8dae568b',
+            '/kaggle/input/objaverse-subset/archive_5/793f1bd80bfb45268832b267d6a31cab',
+            '/kaggle/input/objaverse-subset/archive_5/b637b4e3f43d414c96edb6a0c18b0603'
         ]
 
         for sub in self.subfolder:

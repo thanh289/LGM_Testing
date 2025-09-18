@@ -13,6 +13,8 @@ import warnings
 from torch import Tensor
 from torch import nn
 
+# xformer is a library provide things that are optimize for Transformer
+# which run much faster than the default version
 XFORMERS_ENABLED = os.environ.get("XFORMERS_DISABLED") is None
 try:
     if XFORMERS_ENABLED:
@@ -39,6 +41,7 @@ class Attention(nn.Module):
         proj_drop: float = 0.0,
     ) -> None:
         super().__init__()
+        # Attention(Q, K, V) = softmax(K^T x Q / sqrt(d_k)) x V 
         self.num_heads = num_heads
         head_dim = dim // num_heads
         self.scale = head_dim**-0.5
@@ -53,18 +56,21 @@ class Attention(nn.Module):
         qkv = self.qkv(x).reshape(B, N, 3, self.num_heads, C // self.num_heads).permute(2, 0, 3, 1, 4)
 
         q, k, v = qkv[0] * self.scale, qkv[1], qkv[2]
+        # (B, heads, N, channel/head) @ (B, heads, channel/head, N) = (B, heads, N, N)
         attn = q @ k.transpose(-2, -1)
 
         attn = attn.softmax(dim=-1)
         attn = self.attn_drop(attn)
+        # usually this step end at softmax, but we add a layer of dropout, prevent from overfitting
 
+        # (B, heads, N, N) @ (B, heads, N, channel/head) = (B, heads, N, channel/head)
         x = (attn @ v).transpose(1, 2).reshape(B, N, C)
         x = self.proj(x)
         x = self.proj_drop(x)
         return x
-
-
-class MemEffAttention(Attention):
+      
+# Memory Efficient
+class MemEffAttention(Attention): 
     def forward(self, x: Tensor, attn_bias=None) -> Tensor:
         if not XFORMERS_AVAILABLE:
             if attn_bias is not None:
