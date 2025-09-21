@@ -49,7 +49,15 @@ def main():
 
     model = LGM(cfg)
 
+    # Freeze encoder parts for the first few epochs
+    def set_encoder_requires_grad(model, requires_grad: bool):
+        for name, param in model.named_parameters():
+            if name.startswith("unet.conv_in") or \
+            name.startswith("unet.down_blocks") or \
+            name.startswith("unet.mid_block"):
+                param.requires_grad = requires_grad
 
+    
     
     # Load model checkpoint for FINE-TUNING
     if cfg.fine_tune and cfg.resume is not None:
@@ -70,6 +78,10 @@ def main():
                     accelerator.print(f'[WARN] mismatching shape for param {k}: ckpt {v.shape} != model {state_dict[k].shape}, ignored.')
             else:
                 accelerator.print(f'[WARN] unexpected param {k}: {v.shape}')
+        
+        # freeze before training
+        set_encoder_requires_grad(model, False)
+        accelerator.print("[INFO] Encoder frozen for fine-tuning")
 
     
     train_dataset = Dataset(data_path=cfg.data_path, cfg=cfg, type='train')
@@ -125,7 +137,16 @@ def main():
 
     best_psnr_eval = 0
 
+
+   
+
+
     for epoch in range(cfg.num_epochs):
+
+        if epoch == 3:
+            set_encoder_requires_grad(model, True)
+            accelerator.print("[INFO] Unfroze encoder at epoch", epoch+1)
+
         model.train()
         total_loss = 0
         total_psnr = 0
