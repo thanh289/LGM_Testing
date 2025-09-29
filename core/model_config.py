@@ -161,5 +161,4 @@ config_defaults['4441'] = Options(
     mixed_precision='fp16',
 )
 
-
-
+AllConfigs = tyro.extras.subcommand_type_from_defaults(config_defaults, config_doc)
